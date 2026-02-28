@@ -12,10 +12,4 @@
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.0.0-rc1" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="eye.pdf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
