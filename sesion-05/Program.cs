@@ -8,73 +8,88 @@ var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 var model = "gpt-5-nano";
 var client = new OpenAIClient(apiKey);
 ChatClient chatClient = client.GetChatClient(model);
-var prompt = "cual es el presupuesto de viáticos y hotel para un viaje a Madrid";
+string prompt = string.Empty;
 
-ChatClientAgent aiAgent = new(chatClient.AsIChatClient(),
-    name: "Mi primer agente",
-    instructions: """
+var skillsProvider = new FileAgentSkillsProvider(
+    skillPath: Path.Combine(AppContext.BaseDirectory, "skills"));
+
+
+ChatClientAgentOptions agentOptions = new()
+{
+    Name = "Agente experto en gastos y reembolsos",
+    AIContextProviders = [skillsProvider],
+    ChatOptions = new ChatOptions()
+    {
+        Instructions = """
             Eres un agente que ayuda a responder preguntas acerca de las 
             políticas de viaje de la empresa. No contestes nada relacionado a otra cosa.
             No sugieras ni preguntes nada más. Contesta de forma concisa y concreta.
             Usa las herramientas que tengas disponibles. No uses tu conocimiento base.
             """,
-    tools: [ AIFunctionFactory.Create(GetAllowancePerDay),
-             AIFunctionFactory.Create(get_hotel_budget)        
-           ]);
-
-
-
-var message = new Microsoft.Extensions.AI.ChatMessage(ChatRole.User, prompt);
-
-var chatOptions = new Microsoft.Extensions.AI.ChatOptions()
-{
-    MaxOutputTokens = 1000,
-    RawRepresentationFactory = _ => new ChatCompletionOptions()
-    {
-        ReasoningEffortLevel = ChatReasoningEffortLevel.Minimal
+        Tools = [ AIFunctionFactory.Create(GetAllowancePerDay),
+                  AIFunctionFactory.Create(get_hotel_budget)
+                ],
+        MaxOutputTokens = 1000,
+        RawRepresentationFactory = _ => new ChatCompletionOptions()
+        {
+            ReasoningEffortLevel = ChatReasoningEffortLevel.Low
+        }
     }
 };
 
-var options = new ChatClientAgentRunOptions(chatOptions);
+ChatClientAgent aiAgent = new(chatClient.AsIChatClient(), agentOptions);
 
-await foreach (var item in aiAgent.RunStreamingAsync(message, options: options))
+while (true)
 {
-    if (item.Contents.Any())
+    Console.WriteLine("Prompt:");
+    prompt = Console.ReadLine();
+
+    var message = new Microsoft.Extensions.AI.ChatMessage(ChatRole.User, prompt);
+
+    await foreach (var item in aiAgent.RunStreamingAsync(message))
     {
-        Console.Write(item.Contents[0]);
+        Console.Write(item.Text);
 
-        if (item.Contents[0] is FunctionCallContent functionCallContent)
+        if (item.Contents.Any())
         {
-            foreach (FunctionCallContent fcc in item.Contents)
+            /*Console.Write(item.Contents[0]);
+
+            if (item.Contents[0] is FunctionCallContent functionCallContent)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine(fcc.CallId);
-                Console.WriteLine(fcc.Name);
-                foreach (var a in fcc.Arguments)
+                foreach (FunctionCallContent fcc in item.Contents)
                 {
-                    Console.WriteLine($"{a.Key} - {a.Value}");
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine(fcc.CallId);
+                    Console.WriteLine(fcc.Name);
+                    foreach (var a in fcc.Arguments)
+                    {
+                        Console.WriteLine($"{a.Key} - {a.Value}");
+                    }
+                    Console.ForegroundColor = ConsoleColor.Gray;
                 }
-                Console.ForegroundColor = ConsoleColor.Gray;
             }
-        }
 
-        if (item.Contents[0] is FunctionResultContent functionResultContent)
-        {
-            foreach (FunctionResultContent frc in item.Contents)
+            if (item.Contents[0] is FunctionResultContent functionResultContent)
             {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine(frc.CallId);
-                Console.WriteLine(frc.Result);
-                Console.ForegroundColor = ConsoleColor.Gray;
-            }
-        }
+                foreach (FunctionResultContent frc in item.Contents)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.WriteLine(frc.CallId);
+                    Console.WriteLine(frc.Result);
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                }
+            }*/
 
-        if (item.Contents[0] is UsageContent usageContent)
-        {
-            PrintUsage(usageContent.Details);
+            if (item.Contents[0] is UsageContent usageContent)
+            {
+                PrintUsage(usageContent.Details);
+            }
         }
     }
+    Console.WriteLine();
+    Console.WriteLine();
 }
+
 void PrintUsage(UsageDetails usage)
 {
     Console.WriteLine();
