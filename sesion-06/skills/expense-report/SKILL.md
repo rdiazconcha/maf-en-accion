@@ -6,4 +6,4 @@ Presenta y valida los informes de gastos de empleados según la política de la 
 ---
 
 ## Instructions
-1. [Revisa la política en](references/POLICY_FAQ.md)
+1. Revisa la política disponible en references/POLICY_FAQ.md

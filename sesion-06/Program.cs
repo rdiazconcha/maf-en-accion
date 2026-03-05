@@ -9,14 +9,26 @@ var model = "gpt-5-nano";
 var client = new OpenAIClient(apiKey);
 ChatClient chatClient = client.GetChatClient(model);
 string prompt = string.Empty;
+var connectionString = Environment.GetEnvironmentVariable("AZURE_COSMOSDB_CONN");
 
 var skillsProvider = new FileAgentSkillsProvider(
     skillPath: Path.Combine(AppContext.BaseDirectory, "skills"));
+
+var historyProvider = new CosmosChatHistoryProvider(
+      connectionString,
+      databaseId: "agents",
+      containerId: "history",
+      stateInitializer: session => new CosmosChatHistoryProvider.State(
+          conversationId: "conv-123",
+          tenantId: "tenant-a",
+          userId: "user-1"
+ ));
 
 
 ChatClientAgentOptions agentOptions = new()
 {
     Name = "Agente experto en gastos y reembolsos",
+    ChatHistoryProvider = historyProvider,
     AIContextProviders = [skillsProvider],
     ChatOptions = new ChatOptions()
     {
@@ -39,6 +51,8 @@ ChatClientAgentOptions agentOptions = new()
 
 ChatClientAgent aiAgent = new(chatClient.AsIChatClient(), agentOptions);
 
+var session = await aiAgent.CreateSessionAsync();
+
 while (true)
 {
     Console.WriteLine("Prompt:");
@@ -46,13 +60,13 @@ while (true)
 
     var message = new Microsoft.Extensions.AI.ChatMessage(ChatRole.User, prompt);
 
-    await foreach (var item in aiAgent.RunStreamingAsync(message))
+    await foreach (var item in aiAgent.RunStreamingAsync(message, session: session))
     {
         Console.Write(item.Text);
 
-        if (item.Contents.Any())
+        /*if (item.Contents.Any())
         {
-            /*Console.Write(item.Contents[0]);
+            Console.Write(item.Contents[0]);
 
             if (item.Contents[0] is FunctionCallContent functionCallContent)
             {
@@ -78,13 +92,13 @@ while (true)
                     Console.WriteLine(frc.Result);
                     Console.ForegroundColor = ConsoleColor.Gray;
                 }
-            }*/
+            }
 
             if (item.Contents[0] is UsageContent usageContent)
             {
                 PrintUsage(usageContent.Details);
             }
-        }
+        }*/
     }
     Console.WriteLine();
     Console.WriteLine();
