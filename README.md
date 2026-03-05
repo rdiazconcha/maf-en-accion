@@ -44,3 +44,9 @@ FileAgentSkillsProvider como AIContextProvider, y cómo el framework invoca auto
 cuando el prompt requiere conocimiento definido en un skill (ej. políticas de reembolso de gastos).
 
 #### Sesión 06 ([Link](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-activity-7435164916489015296-REE6?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74))
+
+Se anuncia el Release Candidate 3 del framework. Se introduce el concepto de sesiones (AgentSession), siendo
+ChatClientAgentSession la implementación concreta para ChatClientAgent. Se explica el manejo del historial de chat:
+por defecto usa InMemoryChatHistoryProvider, donde los mensajes se serializan como JSON en un state bag. Se
+demuestra cómo persistir el historial usando Cosmos DB mediante CosmosChatHistoryProvider, pasando connection
+string, database ID y container ID en las ChatClientAgentOptions.
