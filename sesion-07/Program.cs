@@ -1,4 +1,5 @@
-﻿using Microsoft.Agents.AI;
+﻿using Azure.AI.Language.Text;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using OpenAI.Chat;
@@ -10,9 +11,14 @@ var client = new OpenAIClient(apiKey);
 ChatClient chatClient = client.GetChatClient(model);
 string prompt = string.Empty;
 var connectionString = Environment.GetEnvironmentVariable("AZURE_COSMOSDB_CONN");
+var textAnalysisUri = Environment.GetEnvironmentVariable("TEXT_ANALYSIS_URI");
+var textAnalysisKey = Environment.GetEnvironmentVariable("TEXT_ANALYSIS_KEY");
+
+TextAnalysisClient textAnalysisClient = new(new Uri(textAnalysisUri), new Azure.AzureKeyCredential(textAnalysisKey));
 
 var skillsProvider = new FileAgentSkillsProvider(
     skillPath: Path.Combine(AppContext.BaseDirectory, "skills"));
+var sentimentAdaptionProvider = new SentimentAdaptionProvider(textAnalysisClient);
 
 var historyProvider = new CosmosChatHistoryProvider(
       connectionString,
@@ -28,8 +34,8 @@ var historyProvider = new CosmosChatHistoryProvider(
 ChatClientAgentOptions agentOptions = new()
 {
     Name = "Agente experto en gastos y reembolsos",
-    ChatHistoryProvider = historyProvider,
-    AIContextProviders = [skillsProvider],
+    //ChatHistoryProvider = historyProvider,
+    AIContextProviders = [skillsProvider, sentimentAdaptionProvider],
     ChatOptions = new ChatOptions()
     {
         Instructions = """
@@ -129,3 +135,58 @@ Money GetAllowancePerDay([Description("El nombre de la ciudad.")] string city)
 
 
 record Money(decimal Amount, string Currency = "USD");
+
+public class SentimentAdaptionProvider(TextAnalysisClient textAnalysisClient) : AIContextProvider
+{
+    protected override ValueTask<AIContext> ProvideAIContextAsync(InvokingContext context, 
+        CancellationToken cancellationToken = default)
+    {
+        string sentiment = "neutral";
+
+        if (context.Session.StateBag.TryGetValue(StateKeys[0], out string storedSentiment) == true)
+        {
+            sentiment = storedSentiment;
+        }
+
+        var instructions = sentiment switch
+        {
+            "negative" => "El usuario está enojado. Sé empático y conciso. Nada de bromas.",
+            "mixed" => "El usuario tiene sentimientos encontrados. Ayúdalo y reconoce sus sentimientos.",
+            "positive" => "El usuario está de buen humor.  Debes bromear y usar emojis.",
+            _ => null
+        };
+
+        return new ValueTask<AIContext>(new AIContext() { Instructions = instructions });
+    }
+
+    protected override async ValueTask StoreAIContextAsync(InvokedContext context, 
+        CancellationToken cancellationToken = default)
+    {
+        var lastUserMessage = context.RequestMessages.LastOrDefault(m => m.Role == ChatRole.User)?.Text;
+
+        if (string.IsNullOrWhiteSpace(lastUserMessage))
+        {
+            return;
+        }
+
+        var sentimentInput = new TextSentimentAnalysisInput()
+        {
+            TextInput = new MultiLanguageTextInput()
+            {
+                MultiLanguageInputs =
+                 {
+                     new MultiLanguageInput("1", lastUserMessage)
+                 }
+            }
+        };
+
+        var result = await textAnalysisClient.AnalyzeTextAsync(sentimentInput,
+            cancellationToken: cancellationToken);
+
+        if (result.Value is AnalyzeTextSentimentResult sentimentResult)
+        {
+            var sentimentText = sentimentResult.Results.Documents.First().Sentiment.ToString();
+            context.Session.StateBag.SetValue(StateKeys[0], sentimentText.ToLowerInvariant());
+        }
+    }
+}

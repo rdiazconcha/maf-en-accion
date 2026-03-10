@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.AI.Language.Text" Version="1.0.0-beta.4" />
     <PackageReference Include="Microsoft.Agents.AI.CosmosNoSql" Version="1.0.0-preview.260304.1" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.0.0-rc3" />
   </ItemGroup>
