@@ -51,7 +51,7 @@ por defecto usa InMemoryChatHistoryProvider, donde los mensajes se serializan co
 demuestra cómo persistir el historial usando Cosmos DB mediante CosmosChatHistoryProvider, pasando connection
 string, database ID y container ID en las ChatClientAgentOptions.
 
-#### Sesión 07 ([Link][(](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-activity-7436977735136190464-zbxy?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74)))
+#### Sesión 07 ([Link](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-activity-7436977735136190464-zbxy?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74))
 
 En la sesión 7 se exploran los proveedores de contexto del Microsoft Agent Framework, objetos que permiten inyectar
 dinámicamente mensajes, instrucciones y herramientas a un agente. Se revisa su ciclo de vida (ProvideAIContextAsync
