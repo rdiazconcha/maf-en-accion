@@ -1,6 +1,8 @@
 ﻿using Azure.AI.Language.Text;
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.Compaction;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using OpenAI;
 using OpenAI.Chat;
 using System.ComponentModel;
@@ -31,11 +33,23 @@ var historyProvider = new CosmosChatHistoryProvider(
  ));
 
 
+var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder.AddConsole()
+           .AddFilter("Microsoft.Agents.AI.Compaction", LogLevel.Trace);
+});
+
+var compactionStrategy = 
+    new SummarizationCompactionStrategy(chatClient.AsIChatClient(),
+                    CompactionTriggers.TokensExceed(3000));
+
+var compactionProvider = new CompactionProvider(compactionStrategy, loggerFactory: loggerFactory);
+
 ChatClientAgentOptions agentOptions = new()
 {
     Name = "Agente experto en gastos y reembolsos",
-    //ChatHistoryProvider = historyProvider,
-    AIContextProviders = [skillsProvider, sentimentAdaptionProvider],
+    ChatHistoryProvider = historyProvider,
+    AIContextProviders = [skillsProvider, sentimentAdaptionProvider, compactionProvider],
     ChatOptions = new ChatOptions()
     {
         Instructions = """
@@ -70,9 +84,9 @@ while (true)
     {
         Console.Write(item.Text);
 
-        /*if (item.Contents.Any())
+        if (item.Contents.Any())
         {
-            Console.Write(item.Contents[0]);
+            //Console.Write(item.Contents[0]);
 
             if (item.Contents[0] is FunctionCallContent functionCallContent)
             {
@@ -104,7 +118,7 @@ while (true)
             {
                 PrintUsage(usageContent.Details);
             }
-        }*/
+        }
     }
     Console.WriteLine();
     Console.WriteLine();
