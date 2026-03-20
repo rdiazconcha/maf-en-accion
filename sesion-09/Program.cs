@@ -1,10 +1,13 @@
 ﻿using Azure.AI.Language.Text;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Compaction;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
 using OpenAI.Chat;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using System.ComponentModel;
 
 var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
@@ -15,6 +18,7 @@ string prompt = string.Empty;
 var connectionString = Environment.GetEnvironmentVariable("AZURE_COSMOSDB_CONN");
 var textAnalysisUri = Environment.GetEnvironmentVariable("TEXT_ANALYSIS_URI");
 var textAnalysisKey = Environment.GetEnvironmentVariable("TEXT_ANALYSIS_KEY");
+var azureAppInsightsConn = Environment.GetEnvironmentVariable("AZURE_APPINSIGHTS_CONN");
 
 TextAnalysisClient textAnalysisClient = new(new Uri(textAnalysisUri), new Azure.AzureKeyCredential(textAnalysisKey));
 
@@ -36,6 +40,7 @@ var historyProvider = new CosmosChatHistoryProvider(
 var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.AddConsole()
+           .AddFilter("*", LogLevel.Trace)
            .AddFilter("Microsoft.Agents.AI.Compaction", LogLevel.Trace);
 });
 
@@ -69,7 +74,24 @@ ChatClientAgentOptions agentOptions = new()
     }
 };
 
-ChatClientAgent aiAgent = new(chatClient.AsIChatClient(), agentOptions);
+var sourceName = "myfirstagent";
+
+var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    .AddSource(sourceName)
+    .AddAzureMonitorTraceExporter(options =>
+    {
+        options.ConnectionString = azureAppInsightsConn;
+    })
+    .Build();
+
+
+ChatClientAgent theAgent = new(chatClient.AsIChatClient(), agentOptions);
+
+var aiAgent = theAgent.AsBuilder()
+                      .UseLogging(loggerFactory: loggerFactory)
+                      .UseOpenTelemetry(sourceName)
+                      .Build();
+
 
 var session = await aiAgent.CreateSessionAsync();
 
@@ -120,6 +142,7 @@ while (true)
             }
         }
     }
+    //tracerProvider.ForceFlush(5000);
     Console.WriteLine();
     Console.WriteLine();
 }
