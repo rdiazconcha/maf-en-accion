@@ -59,3 +59,13 @@ y StoreAIContextAsync), las clases base disponibles y sus casos de uso. Como eje
 SentimentAdaptationProvider que, usando Azure AI Language, analiza el sentimiento del usuario y adapta el tono del
 agente en cada interacción. Se cierra comparando brevemente los proveedores de contexto con los middleware, que se
 abordarán en la siguiente sesión.
+
+#### Sesión 08 ([Link](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-activity-7439445668873728001-c6O6?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74))
+
+En esta sesión se abordó el tema de compactación de conversaciones (Compaction Pipeline) en el Microsoft Agent Framework, una característica introducida en el Release
+Candidate 4. Se explicó que los agentes enfrentan el problema de que las conversaciones crecen indefinidamente y pueden llenar la ventana de contexto del modelo de
+lenguaje. La compactación agrupa los mensajes en cinco categorías (System, User, Assistant Text, Tool Call y Summary), y ofrece cuatro estrategias ordenadas de menor a
+mayor agresividad: Tool Result (compacta solo invocaciones a herramientas), Summarization (genera resúmenes usando el LLM), Sliding Window (remueve turnos viejos) y
+Truncation (elimina mensajes antiguos), las cuales pueden combinarse en un Pipeline secuencial. Se demostró en código cómo configurar la estrategia de Summarization con
+un trigger basado en tokens, asignarla al agente mediante un CompactionProvider (que es un AI Context Provider), y se verificó con logging que la compactación se
+ejecuta correctamente, almacenando los resúmenes en el State Bag en memoria mientras el Chat History Provider conserva siempre los mensajes originales.
