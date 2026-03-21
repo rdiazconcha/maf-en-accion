@@ -69,3 +69,11 @@ mayor agresividad: Tool Result (compacta solo invocaciones a herramientas), Summ
 Truncation (elimina mensajes antiguos), las cuales pueden combinarse en un Pipeline secuencial. Se demostró en código cómo configurar la estrategia de Summarization con
 un trigger basado en tokens, asignarla al agente mediante un CompactionProvider (que es un AI Context Provider), y se verificó con logging que la compactación se
 ejecuta correctamente, almacenando los resúmenes en el State Bag en memoria mientras el Chat History Provider conserva siempre los mensajes originales.
+
+#### Sesión 09 ([Link](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-activity-7440827532171464704-pDlb?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74))
+
+Esta sesión se centra en el concepto de middlewares, comenzando con una explicación del patrón de diseño Decorator y la clase
+base DelegatingAIAgent, que permite envolver un agente dentro de otro para agregar comportamientos sin modificar el original. Se presentan los tres niveles de
+middleware disponibles (a nivel de agente, de función y de chat client), sus casos de uso como logging, filtrado de contenido, guardrails de IA responsable y
+human-in-the-loop, y se demuestra en código cómo utilizar middlewares preconstruidos como UseLogging y UseOpenTelemetry mediante el patrón Builder (AIAgentBuilder) con
+sintaxis fluida, incluyendo una integración práctica con Azure Application Insights para enviar trazas y métricas de observabilidad.
