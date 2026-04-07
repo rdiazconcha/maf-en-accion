@@ -22,7 +22,7 @@ var azureAppInsightsConn = Environment.GetEnvironmentVariable("AZURE_APPINSIGHTS
 
 TextAnalysisClient textAnalysisClient = new(new Uri(textAnalysisUri), new Azure.AzureKeyCredential(textAnalysisKey));
 
-var skillsProvider = new FileAgentSkillsProvider(
+var skillsProvider = new AgentSkillsProvider(
     skillPath: Path.Combine(AppContext.BaseDirectory, "skills"));
 var sentimentAdaptionProvider = new SentimentAdaptionProvider(textAnalysisClient);
 
@@ -40,8 +40,8 @@ var historyProvider = new CosmosChatHistoryProvider(
 var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.AddConsole()
-           .AddFilter("*", LogLevel.Trace)
-           .AddFilter("Microsoft.Agents.AI.Compaction", LogLevel.Trace);
+           .AddFilter("*", LogLevel.Information)
+           .AddFilter("Microsoft.Agents.AI.Compaction", LogLevel.Information);
 });
 
 var compactionStrategy = 
@@ -53,8 +53,8 @@ var compactionProvider = new CompactionProvider(compactionStrategy, loggerFactor
 ChatClientAgentOptions agentOptions = new()
 {
     Name = "Agente experto en gastos y reembolsos",
-    ChatHistoryProvider = historyProvider,
-    AIContextProviders = [skillsProvider, sentimentAdaptionProvider, compactionProvider],
+    //ChatHistoryProvider = historyProvider,
+    AIContextProviders = [/*skillsProvider, */sentimentAdaptionProvider, compactionProvider],
     ChatOptions = new ChatOptions()
     {
         Instructions = """
@@ -63,8 +63,9 @@ ChatClientAgentOptions agentOptions = new()
             No sugieras ni preguntes nada más. Contesta de forma concisa y concreta.
             Usa las herramientas que tengas disponibles. No uses tu conocimiento base.
             """,
-        Tools = [ AIFunctionFactory.Create(GetAllowancePerDay),
-                  AIFunctionFactory.Create(get_hotel_budget)
+        Tools = [   
+                    AIFunctionFactory.Create(GetAllowancePerDay),
+                    new ApprovalRequiredAIFunction(AIFunctionFactory.Create(get_hotel_budget))
                 ],
         MaxOutputTokens = 1000,
         RawRepresentationFactory = _ => new ChatCompletionOptions()
@@ -73,6 +74,8 @@ ChatClientAgentOptions agentOptions = new()
         }
     }
 };
+
+
 
 var sourceName = "myfirstagent";
 
@@ -108,38 +111,35 @@ while (true)
 
         if (item.Contents.Any())
         {
-            //Console.Write(item.Contents[0]);
-
-            if (item.Contents[0] is FunctionCallContent functionCallContent)
+            if (item.Contents[0] is ToolApprovalRequestContent toolApprovalRequestContent)
             {
-                foreach (FunctionCallContent fcc in item.Contents)
+                Console.WriteLine($"'{toolApprovalRequestContent.ToolCall.CallId}' requiere aprobación.");
+                Console.WriteLine("¿Aprobar? S/N");
+                var approvalResponse = Console.ReadLine();
+                bool approved = false;
+                approved = approvalResponse.ToLowerInvariant() == "s";
+                
+                var toolApprovalResponseContent
+                        = new ToolApprovalResponseContent(toolApprovalRequestContent.RequestId, approved,
+                        toolApprovalRequestContent.ToolCall);
+
+                var newChatMessage = new Microsoft.Extensions.AI.ChatMessage();
+                newChatMessage.Contents.Add(toolApprovalResponseContent);
+                newChatMessage.Contents.Add(new TextContent(approved ? "" : "No lo aprobó el usuario"));
+
+                await foreach (var item2 in aiAgent.RunStreamingAsync(newChatMessage, session: session))
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine(fcc.CallId);
-                    Console.WriteLine(fcc.Name);
-                    foreach (var a in fcc.Arguments)
-                    {
-                        Console.WriteLine($"{a.Key} - {a.Value}");
-                    }
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.Write(item2.Text);
+
+                    ReportFunctionCallContent(item2);
+                    ReportFunctionResultContent(item2);
+                    ReportUsage(item2);
                 }
             }
 
-            if (item.Contents[0] is FunctionResultContent functionResultContent)
-            {
-                foreach (FunctionResultContent frc in item.Contents)
-                {
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine(frc.CallId);
-                    Console.WriteLine(frc.Result);
-                    Console.ForegroundColor = ConsoleColor.Gray;
-                }
-            }
-
-            if (item.Contents[0] is UsageContent usageContent)
-            {
-                PrintUsage(usageContent.Details);
-            }
+            ReportFunctionCallContent(item);
+            ReportFunctionResultContent(item);
+            ReportUsage(item);
         }
     }
     //tracerProvider.ForceFlush(5000);
@@ -170,6 +170,47 @@ Money GetAllowancePerDay([Description("El nombre de la ciudad.")] string city)
     return city.ToLowerInvariant() == "aguascalientes" ? new Money(20m) : new Money(100m);
 }
 
+void ReportUsage(AgentResponseUpdate item)
+{
+    if (item.Contents.Any() && item.Contents[0] is UsageContent usageContent)
+    {
+        PrintUsage(usageContent.Details);
+    }
+}
+
+void ReportFunctionCallContent(AgentResponseUpdate item)
+{
+    if (item.Contents.Any() 
+            && item.Contents[0] is FunctionCallContent functionCallContent)
+    {
+        foreach (FunctionCallContent fcc in item.Contents)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine(fcc.CallId);
+            Console.WriteLine(fcc.Name);
+            foreach (var a in fcc.Arguments)
+            {
+                Console.WriteLine($"{a.Key} - {a.Value}");
+            }
+            Console.ForegroundColor = ConsoleColor.Gray;
+        }
+    }
+}
+
+void ReportFunctionResultContent(AgentResponseUpdate item)
+{
+    if (item.Contents.Any() 
+        && item.Contents[0] is FunctionResultContent functionResultContent)
+    {
+        foreach (FunctionResultContent frc in item.Contents)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine(frc.CallId);
+            Console.WriteLine(frc.Result);
+            Console.ForegroundColor = ConsoleColor.Gray;
+        }
+    }
+}
 
 record Money(decimal Amount, string Currency = "USD");
 
