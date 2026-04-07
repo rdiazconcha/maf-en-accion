@@ -77,3 +77,16 @@ base DelegatingAIAgent, que permite envolver un agente dentro de otro para agreg
 middleware disponibles (a nivel de agente, de función y de chat client), sus casos de uso como logging, filtrado de contenido, guardrails de IA responsable y
 human-in-the-loop, y se demuestra en código cómo utilizar middlewares preconstruidos como UseLogging y UseOpenTelemetry mediante el patrón Builder (AIAgentBuilder) con
 sintaxis fluida, incluyendo una integración práctica con Azure Application Insights para enviar trazas y métricas de observabilidad.
+
+
+#### Sesión 10 ([Link](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-activity-7447327956605186048-zWgr?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74))
+
+En esta sesión se aborda el concepto de Human in the Loop (HITL) o aprobación humana dentro del Microsoft Agent
+Framework. Tras actualizar el proyecto a la versión 1.0 del framework (señalando un breaking change en el API de
+Skills), se explica cómo implementar la aprobación humana en herramientas de agentes utilizando la clase
+ApprovalRequiredAIFunction, que sigue el patrón decorador (decorator pattern) para interceptar la ejecución de una
+herramienta y solicitar autorización antes de proceder. Se detallan los tipos de contenido involucrados —
+ToolApprovalRequestContent para la solicitud de aprobación y ToolApprovalResponseContent para la respuesta (aprobada
+o denegada) — y se implementa paso a paso en una aplicación de consola un flujo donde el usuario puede aprobar o
+rechazar la ejecución de funciones como GetHotelBudget, refactorizando el loop de procesamiento para manejar
+correctamente este nuevo ciclo de aprobación antes de que el agente ejecute la herramienta.
