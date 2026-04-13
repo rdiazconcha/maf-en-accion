@@ -22,8 +22,8 @@ var azureAppInsightsConn = Environment.GetEnvironmentVariable("AZURE_APPINSIGHTS
 
 TextAnalysisClient textAnalysisClient = new(new Uri(textAnalysisUri), new Azure.AzureKeyCredential(textAnalysisKey));
 
-var skillsProvider = new AgentSkillsProvider(
-    skillPath: Path.Combine(AppContext.BaseDirectory, "skills"));
+/*var fileBasedSkillsProvider = new AgentSkillsProvider(
+    skillPath: Path.Combine(AppContext.BaseDirectory, "skills"));*/
 var sentimentAdaptionProvider = new SentimentAdaptionProvider(textAnalysisClient);
 
 var historyProvider = new CosmosChatHistoryProvider(
@@ -48,13 +48,34 @@ var compactionStrategy =
     new SummarizationCompactionStrategy(chatClient.AsIChatClient(),
                     CompactionTriggers.TokensExceed(3000));
 
+
 var compactionProvider = new CompactionProvider(compactionStrategy, loggerFactory: loggerFactory);
+
+/*// Inline skill
+var inlineSkill = new AgentInlineSkill(
+    name: "currency-to-points-converter", 
+    description: "Convierte el valor de una divisa a puntos.", 
+    instructions: "Usa los recursos.")
+      .AddResource("conversion-table", """
+            | Currency Range | Points Conversion |
+              |----------------|------------------|
+              | 0 – 200        | 1.7              |
+              | 201 – 500      | 1.8              |
+              | 501 – 1000     | 2.0              |
+      """)
+      .AddResource("conversion-policy", () => $"Generated at {DateTime.UtcNow:O}")
+      .AddScript("convert", (double value, double factor) =>
+          JsonSerializer.Serialize(new { result = value * factor }));
+
+var skillsProvider = new AgentSkillsProvider(inlineSkill);*/
+
+var skillsProvider = new AgentSkillsProvider(new CurrencyToPointConverterSkill());
 
 ChatClientAgentOptions agentOptions = new()
 {
     Name = "Agente experto en gastos y reembolsos",
     //ChatHistoryProvider = historyProvider,
-    AIContextProviders = [/*skillsProvider, */sentimentAdaptionProvider, compactionProvider],
+    AIContextProviders = [skillsProvider, sentimentAdaptionProvider, compactionProvider],
     ChatOptions = new ChatOptions()
     {
         Instructions = """
