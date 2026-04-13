@@ -90,3 +90,11 @@ ToolApprovalRequestContent para la solicitud de aprobación y ToolApprovalRespon
 o denegada) — y se implementa paso a paso en una aplicación de consola un flujo donde el usuario puede aprobar o
 rechazar la ejecución de funciones como GetHotelBudget, refactorizando el loop de procesamiento para manejar
 correctamente este nuevo ciclo de aprobación antes de que el agente ejecute la herramienta.
+
+
+#### Sesión 11 ([Link](https://www.linkedin.com/events/7449508648705224705/?viewAsMember=true))
+En esta sesión se hace un refresh de los Skills del Microsoft Agent Framework, motivado por los ajustes que el equipo introdujo en la versión 1.1.0 (ya liberada, sin
+breaking changes). Se explica que los skills son un formato estándar basado en Markdown (agentskills.io) para dar capacidades a los agentes, complementarios a los
+servidores MCP, y se presentan las tres formas de crearlos en el framework, profundizando en la basada en archivos (skill.md con front matter YAML y recursos/scripts
+asociados) cargada mediante AgentSkillsProvider. Se destaca su característica clave de progressive disclosure, que evita saturar el contexto del modelo cargando
+inicialmente solo el front matter de cada skill y exponiendo herramientas como load_skill para traer las instrucciones completas bajo demanda.
