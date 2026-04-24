@@ -1,11 +1,11 @@
 ﻿using Azure.AI.Language.Text;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.Compaction;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
 using OpenAI.Chat;
+using OpenAI.Responses;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 using System.ComponentModel;
@@ -13,7 +13,11 @@ using System.ComponentModel;
 var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 var model = "gpt-5-nano";
 var client = new OpenAIClient(apiKey);
-ChatClient chatClient = client.GetChatClient(model);
+
+
+//ChatClient chatClient = client.GetChatClient(model);
+ResponsesClient responsesClient = client.GetResponsesClient();
+
 string prompt = string.Empty;
 var connectionString = Environment.GetEnvironmentVariable("AZURE_COSMOSDB_CONN");
 var textAnalysisUri = Environment.GetEnvironmentVariable("TEXT_ANALYSIS_URI");
@@ -40,16 +44,16 @@ var historyProvider = new CosmosChatHistoryProvider(
 var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.AddConsole()
-           .AddFilter("*", LogLevel.Information)
+           .AddFilter("*", LogLevel.Trace)
            .AddFilter("Microsoft.Agents.AI.Compaction", LogLevel.Information);
 });
 
-var compactionStrategy = 
-    new SummarizationCompactionStrategy(chatClient.AsIChatClient(),
-                    CompactionTriggers.TokensExceed(3000));
+//var compactionStrategy = 
+//    new SummarizationCompactionStrategy(chatClient.AsIChatClient(),
+//                    CompactionTriggers.TokensExceed(3000));
 
 
-var compactionProvider = new CompactionProvider(compactionStrategy, loggerFactory: loggerFactory);
+//var compactionProvider = new CompactionProvider(compactionStrategy, loggerFactory: loggerFactory);
 
 /*// Inline skill
 var inlineSkill = new AgentInlineSkill(
@@ -75,24 +79,23 @@ ChatClientAgentOptions agentOptions = new()
 {
     Name = "Agente experto en gastos y reembolsos",
     //ChatHistoryProvider = historyProvider,
-    AIContextProviders = [skillsProvider, sentimentAdaptionProvider, compactionProvider],
+    AIContextProviders = [skillsProvider, sentimentAdaptionProvider],
     ChatOptions = new ChatOptions()
     {
         Instructions = """
-            Eres un agente que ayuda a responder preguntas acerca de las 
-            políticas de viaje de la empresa. No contestes nada relacionado a otra cosa.
-            No sugieras ni preguntes nada más. Contesta de forma concisa y concreta.
-            Usa las herramientas que tengas disponibles. No uses tu conocimiento base.
+            Eres un agente super útil.
             """,
         Tools = [   
                     AIFunctionFactory.Create(GetAllowancePerDay),
-                    new ApprovalRequiredAIFunction(AIFunctionFactory.Create(get_hotel_budget))
+                    new ApprovalRequiredAIFunction(AIFunctionFactory.Create(get_hotel_budget)),
+                    new HostedWebSearchTool()
                 ],
         MaxOutputTokens = 1000,
-        RawRepresentationFactory = _ => new ChatCompletionOptions()
+        Reasoning = new ReasoningOptions() {  Effort = ReasoningEffort.High},
+        /*RawRepresentationFactory = _ => new ChatCompletionOptions()
         {
-            ReasoningEffortLevel = ChatReasoningEffortLevel.Low
-        }
+            ReasoningEffortLevel = ChatReasoningEffortLevel.None
+        }*/
     }
 };
 
@@ -109,7 +112,12 @@ var tracerProvider = Sdk.CreateTracerProviderBuilder()
     .Build();
 
 
-ChatClientAgent theAgent = new(chatClient.AsIChatClient(), agentOptions);
+var theAgent = responsesClient.AsAIAgent(options: agentOptions,
+    model: model);
+
+//ChatClientAgent theAgent 
+//    = new(responsesClient.AsIChatClientWithStoredOutputDisabled(model), 
+//    agentOptions);
 
 var aiAgent = theAgent.AsBuilder()
                       .UseLogging(loggerFactory: loggerFactory)
