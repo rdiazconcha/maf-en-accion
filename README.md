@@ -98,3 +98,10 @@ breaking changes). Se explica que los skills son un formato estándar basado en 
 servidores MCP, y se presentan las tres formas de crearlos en el framework, profundizando en la basada en archivos (skill.md con front matter YAML y recursos/scripts
 asociados) cargada mediante AgentSkillsProvider. Se destaca su característica clave de progressive disclosure, que evita saturar el contexto del modelo cargando
 inicialmente solo el front matter de cada skill y exponiendo herramientas como load_skill para traer las instrucciones completas bajo demanda.
+
+
+#### Sesión 12 ([Link](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-ugcPost-7453261644849344512-D_Zj?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74))
+En esta sesión se actualiza la aplicación al Microsoft Agent Framework 1.3.0 para .NET (recién liberado) y se aborda el tema central del día: las diferencias y
+coincidencias entre el Chat Completions API (el estándar de facto de la industria, usado por OpenAI, DeepSeek, Mistral, Ollama, etc.) y el Responses API inventado por
+OpenAI, explicando cómo el framework abstrae ambos de forma elegante gracias a Microsoft.Extensions.AI. También se comentan los tools del lado del servidor (Web Search,
+Code Interpreter, File Search) y sus implicaciones de costo según el pricing de OpenAI.
