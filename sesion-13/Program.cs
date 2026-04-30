@@ -8,7 +8,9 @@ using OpenAI.Chat;
 using OpenAI.Responses;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
+using System.ClientModel;
 using System.ComponentModel;
+using System.Text.Json;
 
 var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 var model = "gpt-5-nano";
@@ -17,6 +19,14 @@ var client = new OpenAIClient(apiKey);
 
 //ChatClient chatClient = client.GetChatClient(model);
 ResponsesClient responsesClient = client.GetResponsesClient();
+var conversationClient = client.GetConversationClient();
+ClientResult conversation = await conversationClient
+                    .CreateConversationAsync(BinaryContent.Create(BinaryData.FromString("{}")));
+var conversationId = JsonDocument.Parse(conversation.GetRawResponse().ContentStream)
+    .RootElement
+    .GetProperty("id")
+    .GetString();
+
 
 string prompt = string.Empty;
 var connectionString = Environment.GetEnvironmentVariable("AZURE_COSMOSDB_CONN");
@@ -44,7 +54,7 @@ var historyProvider = new CosmosChatHistoryProvider(
 var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.AddConsole()
-           .AddFilter("*", LogLevel.Trace)
+           .AddFilter("*", LogLevel.Information)
            .AddFilter("Microsoft.Agents.AI.Compaction", LogLevel.Information);
 });
 
@@ -88,10 +98,11 @@ ChatClientAgentOptions agentOptions = new()
         Tools = [   
                     AIFunctionFactory.Create(GetAllowancePerDay),
                     new ApprovalRequiredAIFunction(AIFunctionFactory.Create(get_hotel_budget)),
-                    new HostedWebSearchTool()
+                    new HostedWebSearchTool(),
+                    new HostedCodeInterpreterTool()
                 ],
-        MaxOutputTokens = 1000,
-        Reasoning = new ReasoningOptions() {  Effort = ReasoningEffort.High},
+        MaxOutputTokens = 20000,
+        Reasoning = new ReasoningOptions() {  Effort = ReasoningEffort.Low },
         /*RawRepresentationFactory = _ => new ChatCompletionOptions()
         {
             ReasoningEffortLevel = ChatReasoningEffortLevel.None
@@ -112,20 +123,20 @@ var tracerProvider = Sdk.CreateTracerProviderBuilder()
     .Build();
 
 
-var theAgent = responsesClient.AsAIAgent(options: agentOptions,
-    model: model);
+ChatClientAgent theAgent = responsesClient
+                            .AsAIAgent(options: agentOptions, model: model);
 
 //ChatClientAgent theAgent 
 //    = new(responsesClient.AsIChatClientWithStoredOutputDisabled(model), 
 //    agentOptions);
 
-var aiAgent = theAgent.AsBuilder()
+/*var aiAgent = theAgent.AsBuilder()
                       .UseLogging(loggerFactory: loggerFactory)
                       .UseOpenTelemetry(sourceName)
-                      .Build();
+                      .Build();*/
 
 
-var session = await aiAgent.CreateSessionAsync();
+var session = await theAgent.CreateSessionAsync(conversationId);
 
 while (true)
 {
@@ -134,7 +145,7 @@ while (true)
 
     var message = new Microsoft.Extensions.AI.ChatMessage(ChatRole.User, prompt);
 
-    await foreach (var item in aiAgent.RunStreamingAsync(message, session: session))
+    await foreach (var item in theAgent.RunStreamingAsync(message, session: session))
     {
         Console.Write(item.Text);
 
@@ -156,7 +167,7 @@ while (true)
                 newChatMessage.Contents.Add(toolApprovalResponseContent);
                 newChatMessage.Contents.Add(new TextContent(approved ? "" : "No lo aprobó el usuario"));
 
-                await foreach (var item2 in aiAgent.RunStreamingAsync(newChatMessage, session: session))
+                await foreach (var item2 in theAgent.RunStreamingAsync(newChatMessage, session: session))
                 {
                     Console.Write(item2.Text);
 
