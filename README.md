@@ -105,3 +105,15 @@ En esta sesión se actualiza la aplicación al Microsoft Agent Framework 1.3.0 p
 coincidencias entre el Chat Completions API (el estándar de facto de la industria, usado por OpenAI, DeepSeek, Mistral, Ollama, etc.) y el Responses API inventado por
 OpenAI, explicando cómo el framework abstrae ambos de forma elegante gracias a Microsoft.Extensions.AI. También se comentan los tools del lado del servidor (Web Search,
 Code Interpreter, File Search) y sus implicaciones de costo según el pricing de OpenAI.
+
+
+#### Sesión 13 ([Link](https://www.linkedin.com/posts/rdiazconcha_microsoft-agent-framework-en-acci%C3%B3n-sesi%C3%B3n-ugcPost-7455665646949969920-39pv?utm_source=share&utm_medium=member_desktop&rcm=ACoAACFJOm0Bu21UOrkGtbiQx9DjwJmSlpdqf74))
+En la sesión 13 se continúa la comparación entre los APIs de OpenAI desde el Microsoft Agent Framework: se repasa
+que Chat Completions es stateless y portable a otros proveedores, mientras que Responses es stateful, ejecuta
+herramientas hospedadas (web search, code interpreter) y expone tokens de razonamiento, pero requiere encadenar
+manualmente cada turno con PreviousResponseID; para resolver esa fricción se introduce el nuevo Conversations API
+(/v1/conversations), creando un ConversationClient desde el OpenAIClient, generando una conversación con
+CreateConversationAsync y pasando ese ConversationId a la sesión del agente, de modo que el backend de OpenAI
+gestiona automáticamente el hilo de mensajes; también se ajusta MaxOutputTokens (subiéndolo de 1000) y el nivel de
+razonamiento a low para evitar que las respuestas salgan vacías, y se verifica todo en vivo en platform.openai.com
+revisando logs y la conversación persistida del lado del servidor.
