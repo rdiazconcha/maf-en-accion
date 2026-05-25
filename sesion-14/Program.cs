@@ -3,6 +3,7 @@ using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Client;
 using OpenAI;
 using OpenAI.Chat;
 using OpenAI.Responses;
@@ -11,6 +12,7 @@ using OpenTelemetry.Trace;
 using System.ClientModel;
 using System.ComponentModel;
 using System.Text.Json;
+
 
 var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 var model = "gpt-5-nano";
@@ -83,23 +85,41 @@ var inlineSkill = new AgentInlineSkill(
 
 var skillsProvider = new AgentSkillsProvider(inlineSkill);*/
 
+/*await using var mcpClient = await McpClient.CreateAsync(
+    new StdioClientTransport(new()
+{
+    Name = "MCPServer",
+    Command = "npx",
+    Arguments = ["-y", "--verbose", "@modelcontextprotocol/server-github"],
+}));*/
+
+await using McpClient mcpClient = await McpClient.CreateAsync(new HttpClientTransport(new()
+{
+    Endpoint = new Uri("https://frmcp-hbgpabc8degjc4ce.westus-01.azurewebsites.net/mcp"),
+    Name = "FabuRobotics MCP",
+}));
+
+
+IList<McpClientTool> mcpTools = await mcpClient.ListToolsAsync();
+
 var skillsProvider = new AgentSkillsProvider(new CurrencyToPointConverterSkill());
 
 ChatClientAgentOptions agentOptions = new()
 {
-    Name = "Agente experto en gastos y reembolsos",
+    Name = "Agente experto en FabuRobotics",
     //ChatHistoryProvider = historyProvider,
-    AIContextProviders = [skillsProvider, sentimentAdaptionProvider],
+    //AIContextProviders = [skillsProvider, sentimentAdaptionProvider],
     ChatOptions = new ChatOptions()
     {
         Instructions = """
             Eres un agente super útil.
             """,
         Tools = [   
-                    AIFunctionFactory.Create(GetAllowancePerDay),
+                    /*AIFunctionFactory.Create(GetAllowancePerDay),
                     new ApprovalRequiredAIFunction(AIFunctionFactory.Create(get_hotel_budget)),
                     new HostedWebSearchTool(),
-                    new HostedCodeInterpreterTool()
+                    new HostedCodeInterpreterTool()*/
+                    .. mcpTools
                 ],
         MaxOutputTokens = 20000,
         Reasoning = new ReasoningOptions() {  Effort = ReasoningEffort.Low },
@@ -109,6 +129,7 @@ ChatClientAgentOptions agentOptions = new()
         }*/
     }
 };
+
 
 
 
